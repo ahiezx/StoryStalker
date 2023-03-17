@@ -4,7 +4,7 @@ from colorama import Fore, init, Style, Back
 from time import strftime, localtime, time
 from datetime import timedelta
 
-import os, requests, subprocess
+import os, requests, sys
 
 init()
 
@@ -26,7 +26,11 @@ def getid():
 
     }
     id = get(f"https://i.instagram.com/api/v1/users/{user}/usernameinfo/", headers=headers).json()
-    return id["user"]["pk"]
+    try:
+        return id["user"]["pk"]
+    except KeyError:
+        print(f"    {Back.RED} Error: {id['message']} {Back.RESET}")
+        sys.exit(1)
 
 def show():
 
@@ -52,7 +56,6 @@ def show():
     return resp
 
 data = show()
-
 
 class Story:
 
@@ -104,6 +107,13 @@ class Story:
         else:
             self.accessibility_caption = None
         
+        self.mentions = []
+        if 'story_bloks_stickers' in data:
+            for sticker in data['story_bloks_stickers']:
+                self.mentions.append(sticker['bloks_sticker']['sticker_data']['ig_mention']['username'])
+        else:
+            self.mentions = None
+        
     def open_media(self):
         response = requests.get(self.media_url)
 
@@ -147,8 +157,12 @@ for i in data:
 
 print(f"\n    {Back.RED} Total Stories : {len(stories)} {Back.RESET}")
 
+story_number = 1
+
 for story in stories:
     print(f"""
+    Story Number : {Back.RED} {story_number} {Back.RESET}
+    
     {Fore.RED}Taken At : {story.taken_at}{Style.RESET_ALL}
 
     ID : {story.id}
@@ -164,8 +178,11 @@ for story in stories:
     Media URL : {Fore.BLUE}{story.media_url}{Style.RESET_ALL}
     Product Type : {story.product_type}
     Accessibility Caption : {Fore.CYAN}{story.accessibility_caption}{Style.RESET_ALL}
+    Mentions ({len(story.mentions)}): {Fore.GREEN}{story.mentions}{Style.RESET_ALL}
     """)
     print(Fore.GREEN + "----------------------------------------" + Style.RESET_ALL)
+
+    story_number += 1
 
     question = input("[I] Do you want to open this story? (y/n) ")
 
